@@ -2,28 +2,28 @@
 import { create } from "zustand";
 
 interface ScriptOutputState {
-  outputs: { [key: number]: string[] };
+  outputs: { [key: number]: string };
   setOutput: (projectId: number, output: string) => void;
-  clearOutputs: (projectId: number) => void;
+  clearOutput: (projectId: number) => void;
 }
 
 export const useScriptOutputStore = create<ScriptOutputState>((set) => ({
   outputs: {},
   setOutput: (projectId, output) => {
+    console.log(`Setting output for project ${projectId}: ${output}`);
     set((state) => ({
       outputs: {
         ...state.outputs,
-        [projectId]: state.outputs[projectId]
-          ? [...state.outputs[projectId], output]
-          : [output],
+        [projectId]: output, // Remplace la sortie précédente par la nouvelle
       },
     }));
   },
-  clearOutputs: (projectId) => {
+  clearOutput: (projectId) => {
+    console.log(`Clearing output for project ${projectId}`);
     set((state) => ({
       outputs: {
         ...state.outputs,
-        [projectId]: [],
+        [projectId]: "",
       },
     }));
   },

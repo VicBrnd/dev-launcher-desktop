@@ -16,11 +16,11 @@
         "width": 800,
         "height": 600,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self';"
     }
   },
   "bundle": {

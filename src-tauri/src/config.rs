@@ -1,8 +1,10 @@
+// src-tauri/src/config.rs
+
+use dirs::home_dir;
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
-use dirs::home_dir;
 
 const CONFIG_FILE_NAME: &str = ".dld-config.json";
 
@@ -17,6 +19,7 @@ pub struct ProjectFolder {
     pub name: String,
     pub added_on: String,
     pub framework: String,
+    pub framework_url: Option<String>,
 }
 
 pub fn get_config_path() -> PathBuf {
@@ -34,8 +37,8 @@ pub fn load_or_create_config() -> Config {
         });
     }
 
-    let mut file = File::open(&config_path)
-        .expect("Impossible d'ouvrir le fichier de configuration");
+    let mut file =
+        File::open(&config_path).expect("Impossible d'ouvrir le fichier de configuration");
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .expect("Erreur lors de la lecture du fichier de configuration");

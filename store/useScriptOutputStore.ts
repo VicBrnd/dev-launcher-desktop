@@ -2,7 +2,7 @@
 import { create } from "zustand";
 
 interface ScriptOutputState {
-  outputs: { [key: string]: string }; // Utilisation de string pour les UUIDs
+  outputs: { [key: string]: string };
   setOutput: (projectId: string, output: string) => void;
   clearOutput: (projectId: string) => void;
 }
@@ -14,7 +14,7 @@ export const useScriptOutputStore = create<ScriptOutputState>((set) => ({
     set((state) => ({
       outputs: {
         ...state.outputs,
-        [projectId]: output, // Remplace la sortie précédente par la nouvelle
+        [projectId]: output,
       },
     }));
   },

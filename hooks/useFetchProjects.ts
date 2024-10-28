@@ -1,42 +1,28 @@
 // src/hooks/useFetchProjects.ts
-import {
-  PackageInfo,
-  PackageInfoSchema,
-  Project,
-  ProjectSchema,
-} from "@/schemas/schemas"; // Assurez-vous que le chemin est correct
+
+import { Project, ProjectExtendedSchema } from "@/schemas/schemas";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import useSWR from "swr";
 
+// Fonction de récupération des projets
 const fetcher = async (): Promise<Project[]> => {
-  const savedProjects = await invoke<Project[]>("get_projects");
+  try {
+    // Récupère les projets depuis le backend
+    const projectsRaw: unknown = await invoke("get_projects");
 
-  const projectsWithDetails = await Promise.all(
-    savedProjects.map(async (project, index) => {
-      const packageInfoRaw = await invoke<PackageInfo>("get_package_info", {
-        path: project.path,
-      });
+    console.log("Projets reçus du backend:", projectsRaw); // Pour débogage
 
-      // Validation avec Zod
-      const parsedProject = ProjectSchema.parse(project);
-      const parsedPackageInfo = PackageInfoSchema.parse(packageInfoRaw);
-
-      return {
-        ...parsedProject,
-        id: index + 1,
-        framework: parsedProject.framework || "NaN",
-        description: parsedProject.description,
-        status: parsedProject.status,
-        packageManager: parsedPackageInfo.manager,
-        scripts: parsedPackageInfo.scripts,
-      };
-    })
-  );
-
-  return projectsWithDetails;
+    // Valide et parse les projets avec Zod
+    const projects = ProjectExtendedSchema.array().parse(projectsRaw);
+    return projects;
+  } catch (error) {
+    console.error("Erreur lors de la récupération des projets :", error);
+    throw error;
+  }
 };
 
+// Hook personnalisé pour récupérer les projets avec SWR
 export const useFetchProjects = () => {
   return useSWR<Project[]>("projects", fetcher, {
     revalidateOnFocus: false,

@@ -2,9 +2,9 @@
 import { create } from "zustand";
 
 interface ScriptOutputState {
-  outputs: { [key: number]: string };
-  setOutput: (projectId: number, output: string) => void;
-  clearOutput: (projectId: number) => void;
+  outputs: { [key: string]: string }; // Utilisation de string pour les UUIDs
+  setOutput: (projectId: string, output: string) => void;
+  clearOutput: (projectId: string) => void;
 }
 
 export const useScriptOutputStore = create<ScriptOutputState>((set) => ({

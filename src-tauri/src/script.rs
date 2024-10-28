@@ -1,5 +1,6 @@
 // src-tauri/src/script.rs
 
+use crate::types::PackageInfo;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
@@ -12,12 +13,6 @@ const PACKAGE_MANAGERS: &[(&str, &str)] = &[
     ("bun", "bun.lockb"),
     ("npm", "package-lock.json"),
 ];
-
-#[derive(Debug, Clone)]
-pub struct PackageInfo {
-    pub manager: String,
-    pub scripts: HashMap<String, String>,
-}
 
 pub fn detect_package_manager_and_scripts(path: &PathBuf) -> Option<PackageInfo> {
     let package_json_path = path.join("package.json");

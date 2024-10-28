@@ -4,6 +4,7 @@ mod commands;
 mod config;
 mod framework;
 mod script;
+mod types;
 
 use config::load_or_create_config;
 
@@ -25,10 +26,11 @@ pub fn run() {
         })
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
-            commands::select_folder,
             commands::get_projects,
             commands::get_package_info,
-            commands::execute_script
+            commands::execute_script,
+            commands::select_folder,
+
         ])
         .run(tauri::generate_context!())
         .expect("Erreur lors de l'exécution de l'application Tauri");

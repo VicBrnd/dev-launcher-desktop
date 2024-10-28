@@ -3,22 +3,15 @@
 use crate::config::{load_or_create_config, save_config, ProjectFolder};
 use crate::framework::detect_framework;
 use crate::script::detect_package_manager_and_scripts;
-use chrono::Local;
-use serde::Serialize;
+use crate::types::{PackageInfo, AppState};
+
 use serde_json::json;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_dialog::{DialogExt, FilePath};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command as TokioCommand;
-
-#[derive(Serialize)]
-pub struct PackageInfo {
-    manager: String,
-    scripts: HashMap<String, String>,
-}
 
 #[tauri::command]
 pub fn get_package_info(path: String) -> Option<PackageInfo> {
@@ -106,6 +99,26 @@ pub fn get_projects() -> Vec<ProjectFolder> {
     config.added_folders
 }
 
+/// Commande pour supprimer un projet par son ID.
+#[tauri::command]
+pub async fn delete_project(state: tauri::State<'_, AppState>, id: String) -> Result<(), String> {
+    let mut config = load_or_create_config();
+    let initial_len = config.added_folders.len();
+    config.added_folders.retain(|project| project.id != id);
+    save_config(&config);
+
+    if config.added_folders.len() < initial_len {
+        // Supprimer également de l'état global
+        let mut projects = state.projects.lock().await;
+        projects.retain(|project| project.id != id);
+        println!("Projet avec ID {} supprimé.", id);
+        Ok(())
+    } else {
+        Err(format!("Projet avec ID {} non trouvé.", id))
+    }
+}
+
+
 #[tauri::command]
 pub fn select_folder<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let window = app
@@ -147,9 +160,9 @@ pub fn select_folder<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
             let framework_url = framework_info.map(|f| f.url);
 
             let new_folder = ProjectFolder {
+                id: uuid::Uuid::new_v4().to_string(),
                 path: config_path_str.clone(),
                 name: path_buf.file_name().unwrap().to_string_lossy().to_string(),
-                added_on: Local::now().format("%Y-%m-%d").to_string(),
                 framework,
                 framework_url,
             };

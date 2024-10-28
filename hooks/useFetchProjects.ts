@@ -24,12 +24,10 @@ const fetcher = async (): Promise<Project[]> => {
 
       return {
         ...parsedProject,
-        id: index + 1, // Ajoute un ID basé sur l'index
-        framework: parsedProject.framework || "Inconnu",
-        description: parsedProject.description || "TEST",
-        lastUpdated:
-          parsedProject.lastUpdated || new Date().toISOString().split("T")[0],
-        status: parsedProject.status || "En cours",
+        id: index + 1,
+        framework: parsedProject.framework || "NaN",
+        description: parsedProject.description,
+        status: parsedProject.status,
         packageManager: parsedPackageInfo.manager,
         scripts: parsedPackageInfo.scripts,
       };

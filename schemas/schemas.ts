@@ -16,7 +16,6 @@ export const ProjectSchema = z.object({
   framework: z.string().optional(),
   framework_url: z.string().url().optional(),
   description: z.string().optional(),
-  lastUpdated: z.string().optional(),
   status: z.string().optional(),
 });
 

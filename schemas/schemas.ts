@@ -1,4 +1,4 @@
-// src/schemas/schemas.ts
+// /schemas/schemas.ts
 import { z } from "zod";
 
 // Schéma pour les informations du package

@@ -1,4 +1,4 @@
-// src/hooks/useScriptListener.ts
+// /hooks/useScriptListener.ts
 import { useScriptOutputStore } from "@/store/useScriptOutputStore";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";

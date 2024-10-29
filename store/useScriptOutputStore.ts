@@ -1,29 +1,29 @@
-// src/store/useScriptOutputStore.ts
+// /store/useScriptOutputStore.ts
 import { create } from "zustand";
 
 interface ScriptOutputState {
   outputs: { [key: string]: string };
-  setOutput: (projectId: string, output: string) => void;
-  clearOutput: (projectId: string) => void;
+  setOutput: (project_id: string, output: string) => void;
+  clearOutput: (project_id: string) => void;
 }
 
 export const useScriptOutputStore = create<ScriptOutputState>((set) => ({
   outputs: {},
-  setOutput: (projectId, output) => {
-    console.log(`Setting output for project ${projectId}: ${output}`);
+  setOutput: (project_id, output) => {
+    console.log(`Setting output for project ${project_id}: ${output}`);
     set((state) => ({
       outputs: {
         ...state.outputs,
-        [projectId]: output,
+        [project_id]: output,
       },
     }));
   },
-  clearOutput: (projectId) => {
-    console.log(`Clearing output for project ${projectId}`);
+  clearOutput: (project_id) => {
+    console.log(`Clearing output for project ${project_id}`);
     set((state) => ({
       outputs: {
         ...state.outputs,
-        [projectId]: "",
+        [project_id]: "",
       },
     }));
   },

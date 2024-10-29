@@ -1,4 +1,4 @@
-// src/pages/Home.tsx
+// /app/page.tsx
 "use client";
 
 import { ThemeButton } from "@/components/theme-button";
@@ -43,7 +43,7 @@ const Home: React.FC = () => {
 
   useScriptListener();
 
-  console.log("Script Outputs in Home:", scriptOutputs); // Log ajouté
+  console.log("Projets dans Home:", projects); // Log ajouté
 
   const handleRunScript = async (project: Project, scriptName: string) => {
     try {
@@ -51,7 +51,7 @@ const Home: React.FC = () => {
         manager: project.package_manager,
         command: scriptName,
         path: project.path,
-        projectId: project.id,
+        project_id: project.id,
       });
       toast.success(`Script "${scriptName}" lancé pour ${project.name}`);
     } catch (error) {
@@ -78,6 +78,17 @@ const Home: React.FC = () => {
       window.open(framework_url, "_blank", "noopener,noreferrer");
     } else {
       toast.error("Aucune URL disponible pour ce framework.");
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    try {
+      await invoke("delete_project", { id: projectId }); // Commande Rust pour supprimer le projet
+      mutate(); // Rafraîchir les projets après suppression
+      toast.success("Projet supprimé avec succès.");
+    } catch (error) {
+      console.error("Erreur lors de la suppression du projet :", error);
+      toast.error("Erreur lors de la suppression du projet.");
     }
   };
 
@@ -127,6 +138,7 @@ const Home: React.FC = () => {
                 className="flex flex-col justify-between transition-all duration-300"
               >
                 <CardHeader className="p-4">
+                  <span className="truncate mr-2">{project.id}</span>
                   <CardTitle className="text-lg flex items-center justify-between">
                     <span className="truncate mr-2">{project.name}</span>
                     {project.framework_url ? (
@@ -209,7 +221,9 @@ const Home: React.FC = () => {
                         <Pencil className="h-4 w-4 mr-1" />
                         Modifier
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteProject(project.id)}
+                      >
                         <CircleX className="h-4 w-4 mr-1" />
                         Supprimer
                       </DropdownMenuItem>

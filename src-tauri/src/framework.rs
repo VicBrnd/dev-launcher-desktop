@@ -62,7 +62,7 @@ const FRAMEWORKS: &[(&str, &str, &str)] = &[
     ("keystone", "KeystoneJS", "https://keystonejs.com/"),
 ];
 
-pub fn detect_framework(path: &PathBuf) -> Option<FrameworkInfo> {
+pub fn fetch_framework(path: &PathBuf) -> Option<FrameworkInfo> {
     let package_json_path = path.join("package.json");
 
     if !package_json_path.exists() {

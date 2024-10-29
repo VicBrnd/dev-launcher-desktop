@@ -11,7 +11,7 @@ import useSWR, { mutate } from "swr";
 const fetcher = async (): Promise<Project[]> => {
   try {
     // Récupère les projets depuis le backend
-    const projectsRaw: unknown = await invoke("get_projects");
+    const projectsRaw: unknown = await invoke("fetch_projects");
 
     console.log("Projets:", projectsRaw); // Pour débogage
 

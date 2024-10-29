@@ -1,6 +1,6 @@
 // src-tauri/src/script.rs
 
-use crate::types::PackageInfo;
+use crate::types::FetchPackageJson;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
@@ -14,7 +14,7 @@ const PACKAGE_MANAGERS: &[(&str, &str)] = &[
     ("npm", "package-lock.json"),
 ];
 
-pub fn detect_package_manager_and_scripts(path: &PathBuf) -> Option<PackageInfo> {
+pub fn detect_package_manager_and_scripts(path: &PathBuf) -> Option<FetchPackageJson> {
     let package_json_path = path.join("package.json");
 
     // Vérifier si `package.json` existe
@@ -50,7 +50,7 @@ pub fn detect_package_manager_and_scripts(path: &PathBuf) -> Option<PackageInfo>
         })
         .unwrap_or_default();
 
-    Some(PackageInfo {
+    Some(FetchPackageJson {
         manager: package_manager,
         scripts,
     })

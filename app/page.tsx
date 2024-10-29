@@ -19,6 +19,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useFetchProjects } from "@/hooks/useFetchProjects";
 import { useScriptListener } from "@/hooks/useScriptListener";
 import { Project } from "@/schemas/schemas";
@@ -41,10 +47,10 @@ const Home: React.FC = () => {
   const scriptOutputs = useScriptOutputStore((state) => state.outputs);
   const [searchTerm, setSearchTerm] = useState<string>("");
 
+  // Appel du hook pour écouter les événements de script
   useScriptListener();
 
-  console.log("Projets dans Home:", projects); // Log ajouté
-
+  // Fonction pour exécuter un script
   const handleRunScript = async (project: Project, scriptName: string) => {
     try {
       await invoke("execute_script", {
@@ -63,9 +69,10 @@ const Home: React.FC = () => {
     }
   };
 
-  const handleAddFolder = async () => {
+  // Fonction pour ajouter un dossier
+  const handleAddProject = async () => {
     try {
-      await invoke("select_folder");
+      await invoke("add_project");
       mutate();
     } catch (error) {
       console.error("Erreur lors de la sélection du dossier :", error);
@@ -73,6 +80,7 @@ const Home: React.FC = () => {
     }
   };
 
+  // Fonction pour ouvrir l'URL du framework
   const handleFrameworkUrl = (framework_url?: string) => {
     if (framework_url) {
       window.open(framework_url, "_blank", "noopener,noreferrer");
@@ -81,9 +89,10 @@ const Home: React.FC = () => {
     }
   };
 
+  // Fonction pour supprimer un projet
   const handleDeleteProject = async (projectId: string) => {
     try {
-      await invoke("delete_project", { id: projectId }); // Commande Rust pour supprimer le projet
+      await invoke("remove_project", { id: projectId }); // Commande Rust pour supprimer le projet
       mutate(); // Rafraîchir les projets après suppression
       toast.success("Projet supprimé avec succès.");
     } catch (error) {
@@ -100,6 +109,7 @@ const Home: React.FC = () => {
     return <p>Chargement des projets...</p>;
   }
 
+  // Filtrer les projets en fonction du terme de recherche
   const filteredProjects = projects.filter((project) =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -113,7 +123,7 @@ const Home: React.FC = () => {
           </div>
           <div className="flex items-center space-x-2">
             <ThemeButton />
-            <Button onClick={handleAddFolder} variant="ghost" size="icon">
+            <Button onClick={handleAddProject} variant="ghost" size="icon">
               <PackagePlus className="h-7 w-7" />
             </Button>
           </div>
@@ -138,9 +148,19 @@ const Home: React.FC = () => {
                 className="flex flex-col justify-between transition-all duration-300"
               >
                 <CardHeader className="p-4">
-                  <span className="truncate mr-2">{project.id}</span>
                   <CardTitle className="text-lg flex items-center justify-between">
-                    <span className="truncate mr-2">{project.name}</span>
+                    <TooltipProvider delayDuration={0} skipDelayDuration={0}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="truncate mr-2 cursor-help">
+                            {project.name}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>id: {project.id}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>{" "}
                     {project.framework_url ? (
                       <a
                         href={project.framework_url}

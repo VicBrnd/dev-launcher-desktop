@@ -53,7 +53,7 @@ const Home: React.FC = () => {
   // Fonction pour exécuter un script
   const handleRunScript = async (project: Project, scriptName: string) => {
     try {
-      await invoke("execute_script", {
+      await invoke("run_script_project", {
         manager: project.package_manager,
         command: scriptName,
         path: project.path,

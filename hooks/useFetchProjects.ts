@@ -1,72 +1,79 @@
-// /hooks/useFetchProjects.ts
-
-import { Project, ProjectSchema } from "@/schemas/schemas";
-import { invoke } from "@tauri-apps/api/core"; // Correction de l'import
+import { PackageInfoSchema, Project, ProjectSchema } from "@/schemas/schemas";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import useSWR, { mutate } from "swr";
 
-// Fonction de récupération des projets
+// Validateur et fetcher de projets
 const fetcher = async (): Promise<Project[]> => {
-  try {
-    // Récupère les projets depuis le backend
-    const projectsRaw: unknown = await invoke("fetch_projects");
+  const projectsRaw = await invoke("fetch_projects");
+  const parsedProjects = ProjectSchema.array().safeParse(projectsRaw);
 
-    console.log("Projets:", projectsRaw); // Pour débogage
+  if (!parsedProjects.success) throw new Error("Données de projets invalides.");
 
-    // Valide et parse les projets avec Zod
-    const projects = ProjectSchema.array().parse(projectsRaw);
-    return projects;
-  } catch (error) {
-    console.error("Erreur lors de la récupération des projets :", error);
-    throw error;
-  }
+  return Promise.all(
+    parsedProjects.data.map(async (project, index) => {
+      const packageInfoRaw = await invoke("fetch_package_json", {
+        path: project.path,
+      });
+      const parsedPackage = PackageInfoSchema.safeParse(packageInfoRaw);
+
+      if (!parsedPackage.success)
+        throw new Error(`Package invalide pour ${project.name}`);
+
+      return {
+        ...project,
+        id: project.id || (index + 1).toString(),
+        package_manager: parsedPackage.data.manager,
+        scripts: parsedPackage.data.scripts,
+      };
+    })
+  );
 };
 
-// Hook personnalisé pour récupérer les projets avec SWR et écouter les événements
+// Gestion de l'ajout de projet dans le cache SWR
+const addProjectToCache = async (newProject: Project) => {
+  mutate(
+    "projects",
+    (projects: Project[] = []) => [...projects, newProject],
+    false
+  );
+  await mutate("projects"); // Forcer la revalidation des projets
+};
+
+// Hook personnalisé
 export const useFetchProjects = () => {
-  useEffect(() => {
-    // Écoute de l'événement de succès d'ajout de dossier
-    const unlistenSuccess = listen("folder_success", (event) => {
+  const handleEvent = useCallback(
+    (event: { payload: unknown }, isError: boolean) => {
       try {
-        const newProject: Project = JSON.parse(event.payload as string);
-        // Met à jour le cache SWR en ajoutant le nouveau projet
-        mutate(
-          "projects",
-          (currentProjects?: Project[]) => {
-            if (currentProjects) {
-              return [...currentProjects, newProject];
-            }
-            return [newProject];
-          },
-          false
-        ); // false pour ne pas revalider immédiatement
-        toast.success("Dossier ajouté avec succès.");
-      } catch (error) {
-        console.error("Erreur lors de l'analyse du payload:", error);
+        const data = JSON.parse(event.payload as string); // Assurer que payload est une chaîne
+        if (isError) {
+          toast.error(data);
+        } else {
+          addProjectToCache(data); // Ajout et revalidation du cache
+          toast.success("Dossier ajouté avec succès.");
+        }
+      } catch {
         toast.error("Erreur lors de l'ajout du dossier.");
       }
-    });
+    },
+    []
+  );
 
-    // Écoute de l'événement d'erreur d'ajout de dossier
-    const unlistenError = listen("folder_error", (event) => {
-      const errorMessage: string = event.payload as string;
-      console.error("Erreur lors de l'ajout du dossier:", errorMessage);
-      toast.error(errorMessage);
-    });
-
-    // Nettoyage des écouteurs lors du démontage
+  useEffect(() => {
+    const unlistenSuccess = listen("folder_success", (e) =>
+      handleEvent(e, false)
+    );
+    const unlistenError = listen("folder_error", (e) => handleEvent(e, true));
     return () => {
-      unlistenSuccess.then((f) => f()).catch((e) => console.error(e));
-      unlistenError.then((f) => f()).catch((e) => console.error(e));
+      unlistenSuccess.then((u) => u());
+      unlistenError.then((u) => u());
     };
-  }, []);
+  }, [handleEvent]);
 
   return useSWR<Project[]>("projects", fetcher, {
     revalidateOnFocus: false,
-    onError: (error) => {
-      toast.error("Erreur lors du chargement des projets.", error);
-    },
+    onError: () => toast.error("Erreur lors du chargement des projets."), // Erreur supprimée
   });
 };

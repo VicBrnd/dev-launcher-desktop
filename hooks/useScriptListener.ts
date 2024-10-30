@@ -4,7 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 
 interface ScriptEvent {
-  project_id: string;
+  id: string;
   output: string;
 }
 
@@ -13,8 +13,8 @@ export const useScriptListener = () => {
 
   useEffect(() => {
     const handleEvent = (event: { payload: ScriptEvent }) => {
-      const { project_id, output } = event.payload;
-      setOutput(project_id, output);
+      const { id, output } = event.payload;
+      setOutput(id, output);
     };
 
     const unlistenOutput = listen<ScriptEvent>("script_output", handleEvent);

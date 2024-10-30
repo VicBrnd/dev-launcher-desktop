@@ -57,7 +57,7 @@ const Home: React.FC = () => {
         manager: project.package_manager,
         command: scriptName,
         path: project.path,
-        project_id: project.id,
+        id: project.id,
       });
       toast.success(`Script "${scriptName}" lancé pour ${project.name}`);
     } catch (error) {

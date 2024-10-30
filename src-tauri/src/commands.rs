@@ -12,6 +12,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_dialog::{DialogExt, FilePath};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command as TokioCommand;
+use log::{info, warn, error};
 
 
 /// Commande pour ajouter un projet.
@@ -101,65 +102,121 @@ pub fn fetch_package_json(path: String) -> Option<FetchPackageJson> {
 
 #[tauri::command]
 pub async fn run_script_project<R: Runtime>(
-    app: AppHandle<R>,
+    app: tauri::AppHandle<R>,
     manager: String,
     command: String,
     path: String,
-    project_id: u32, // project_id ajouté
+    id: String,
 ) -> Result<(), String> {
+    // 1. Validation des entrées
+    if manager.trim().is_empty() {
+        return Err("Le gestionnaire de paquets ne peut pas être vide.".into());
+    }
+    if command.trim().is_empty() {
+        return Err("La commande ne peut pas être vide.".into());
+    }
+    if path.trim().is_empty() {
+        return Err("Le chemin du projet ne peut pas être vide.".into());
+    }
+    if id.trim().is_empty() {
+        return Err("L'ID du projet ne peut pas être vide.".into());
+    }
+
+    // 2. Récupération de la fenêtre principale via get_webview_window
     let window = app
         .get_webview_window("main")
-        .ok_or("La fenêtre principale n'a pas été trouvée")?;
+        .ok_or_else(|| "La fenêtre principale n'a pas été trouvée".to_string())?;
 
+    // 3. Lancement de la tâche asynchrone pour exécuter la commande
     tokio::spawn(async move {
-        let cmd_result = TokioCommand::new(&manager)
+        info!("Exécution du script '{}' pour le projet ID '{}'", command, id);
+
+        // 4. Tentative de lancement de la commande
+        let mut cmd = match TokioCommand::new(&manager)
             .arg("run")
             .arg(&command)
             .current_dir(&path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .spawn();
+            .spawn()
+        {
+            Ok(cmd) => cmd,
+            Err(e) => {
+                error!("Erreur lors du lancement du script: {}", e);
+                let payload = json!({
+                    "id": id,
+                    "output": format!("Erreur lors de l'exécution du script: {}", e),
+                });
+                let _ = window.emit("script_error", payload);
+                return;
+            }
+        };
 
-        match cmd_result {
-            Ok(mut child) => {
-                if let Some(stdout) = child.stdout.take() {
-                    let window_clone = window.clone();
-                    tokio::spawn(async move {
-                        let reader = BufReader::new(stdout);
-                        let mut lines = reader.lines();
-                        while let Ok(Some(line)) = lines.next_line().await {
-                            let payload = json!({
-                                "project_id": project_id,
-                                "output": line,
-                            });
-                            println!("Emitting script_output: {:?}", payload);
-                            let _ = window_clone.emit("script_output", payload);
-                        }
+        // 5. Gestion de la sortie standard (stdout)
+        if let Some(stdout) = cmd.stdout.take() {
+            let window_clone = window.clone();
+            let id_clone = id.clone();
+            tokio::spawn(async move {
+                let reader = BufReader::new(stdout);
+                let mut lines = reader.lines();
+                while let Ok(Some(line)) = lines.next_line().await {
+                    let payload = json!({
+                        "id": id_clone,
+                        "output": line,
                     });
+                    info!("Emitting script_output: {:?}", payload);
+                    if let Err(e) = window_clone.emit("script_output", payload) {
+                        error!("Erreur lors de l'émission de script_output: {}", e);
+                    }
                 }
+            });
+        }
 
-                if let Some(stderr) = child.stderr.take() {
-                    let window_clone = window.clone();
-                    tokio::spawn(async move {
-                        let reader = BufReader::new(stderr);
-                        let mut lines = reader.lines();
-                        while let Ok(Some(line)) = lines.next_line().await {
-                            let payload = json!({
-                                "project_id": project_id,
-                                "output": line,
-                            });
-                            println!("Emitting script_error: {:?}", payload);
-                            let _ = window_clone.emit("script_error", payload);
-                        }
+        // 6. Gestion des erreurs standard (stderr)
+        if let Some(stderr) = cmd.stderr.take() {
+            let window_clone = window.clone();
+            let id_clone = id.clone();
+            tokio::spawn(async move {
+                let reader = BufReader::new(stderr);
+                let mut lines = reader.lines();
+                while let Ok(Some(line)) = lines.next_line().await {
+                    let payload = json!({
+                        "id": id_clone,
+                        "output": line,
                     });
+                    warn!("Emitting script_error: {:?}", payload);
+                    if let Err(e) = window_clone.emit("script_error", payload) {
+                        error!("Erreur lors de l'émission de script_error: {}", e);
+                    }
                 }
+            });
+        }
 
-                let _ = child.wait().await;
+        // 7. Attente de la fin du processus et gestion du résultat
+        match cmd.wait().await {
+            Ok(status) => {
+                if status.success() {
+                    info!("Script '{}' terminé avec succès pour le projet ID '{}'", command, id);
+                    let _ = window.emit("script_finished", json!({"id": id}));
+                } else {
+                    warn!(
+                        "Script '{}' terminé avec un code d'erreur {} pour le projet ID '{}'",
+                        command,
+                        status.code().unwrap_or(-1),
+                        id
+                    );
+                    let payload = json!({
+                        "id": id,
+                        "output": format!("Le script a terminé avec un code d'erreur {}", status.code().unwrap_or(-1)),
+                    });
+                    let _ = window.emit("script_error", payload);
+                }
             }
             Err(e) => {
+                error!("Erreur lors de l'attente du script: {}", e);
                 let payload = json!({
-                    "project_id": project_id,
-                    "output": format!("Erreur lors de l'exécution du script: {}", e),
+                    "id": id,
+                    "output": format!("Erreur lors de l'attente du script: {}", e),
                 });
                 let _ = window.emit("script_error", payload);
             }
@@ -168,6 +225,7 @@ pub async fn run_script_project<R: Runtime>(
 
     Ok(())
 }
+
 
 
 
